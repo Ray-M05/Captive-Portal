@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Portal Cautivo · Login</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="card">
+    <h1>Portal Cautivo</h1>
+    <p>Acceso a Internet reservado a usuarios autorizados.</p>
+    <form method="POST" action="/login">
+      <label for="username">Usuario</label>
+      <input id="username" name="username" title="Nombre de usuario" placeholder="Introduce tu usuario" required>
+      <label for="password">Contraseña</label>
+      <input id="password" name="password" type="password" title="Contraseña" placeholder="Introduce tu contraseña" required>
+      <button type="submit">Entrar</button>
+    </form>
+    <p class="error">{{ error }}</p>
+  </div>
+</body>
+</html>
