@@ -76,5 +76,5 @@ class Handler(BaseHTTPRequestHandler):
 if __name__ == "__main__":
     port = int(os.getenv("PORT", "8080"))
     with ThreadingHTTPServer(("0.0.0.0", port), Handler) as httpd:
-        print(f"Portal escuchando en http://0.0.0.0:{port}")
+        print(f"Portal escuchando en http://localhost:{port}")
         httpd.serve_forever()

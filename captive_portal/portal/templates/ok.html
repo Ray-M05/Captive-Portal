@@ -6,11 +6,33 @@
   <title>Conectado</title>
   <link rel="stylesheet" href="/static/style.css">
 </head>
-<body>
-  <div class="card">
-    <h1>¡Autenticado! (demo)</h1>
-    <p>Esto es plantilla. La lógica real de firewall y sesiones va en <code>core/</code>.</p>
-    <form method="POST" action="/logout"><button type="submit">Salir</button></form>
+<body class="portal-body">
+
+  <div class="portal-wrapper">
+    <div class="portal-card connected-card">
+
+      <div class="connected-icon-wrapper">
+        <div class="connected-icon-circle">
+          <!-- Ícono check -->
+          <svg class="connected-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+              d="M22 11.08V12A10 10 0 1 1 12 2a9.93 9.93 0 0 1 6.29 2.25M22 4 12 14.01l-3-3"/>
+          </svg>
+        </div>
+      </div>
+
+      <h1 class="connected-title">¡Conectado!</h1>
+
+      <p class="connected-text">
+        Has sido autenticado exitosamente. Ahora tienes acceso a internet.
+      </p>
+
+      <!-- <p class="connected-user">
+        Usuario: <span id="username">{{ username }}</span>
+      </p> -->
+
+    </div>
   </div>
+
 </body>
 </html>
