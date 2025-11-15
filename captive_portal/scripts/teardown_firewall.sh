@@ -1,4 +1,3 @@
-
 set -e
 
 echo "[*] Limpiando reglas de iptables..."
