@@ -7,6 +7,10 @@ from core.auth import verify_user
 from core.firewall import FirewallManager
 from core.arp import lookup_mac         
 from core import sessions as sess_store 
+from core.auth import create_user, list_users
+
+
+ADMIN_IPS = {"127.0.0.1", "10.0.0.1"}  # cambia 10.0.0.1 por la IP de tu router
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -139,6 +143,14 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(render("terms.html"))
             return
+        
+        if path == "/admin/users":
+            if not self._is_admin_request():
+                self.send_error(403, "Forbidden")
+                return
+            self._render_admin_users()
+            return
+
 
         # Cualquier otra ruta -> redirigimos a la raíz del portal
         self.send_response(302)
@@ -146,6 +158,13 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
 
     def do_POST(self):
+        parsed = up.urlparse(self.path)
+        path = parsed.path
+
+        content_length = int(self.headers.get("Content-Length", "0"))
+        body = self.rfile.read(content_length).decode("utf-8")
+        data = dict(up.parse_qsl(body))
+
         # Login
         if self.path == "/login":
             length = int(self.headers.get("Content-Length", "0"))
@@ -201,6 +220,34 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header("Set-Cookie", jar.output(header="", sep="").strip())
             self.end_headers()
             return
+        
+        if self.path == "/admin/users":
+            if not self._is_admin_request():
+                self.send_error(403, "Forbidden")
+                return
+
+            username = data.get("username", "").strip()
+            pwd1 = data.get("password", "")
+            pwd2 = data.get("password2", "")
+
+            if not username:
+                self._render_admin_users(error="El nombre de usuario no puede estar vacío.")
+                return
+
+            if pwd1 != pwd2:
+                self._render_admin_users(error="Las contraseñas no coinciden.")
+                return
+
+            try:
+                create_user(username, pwd1)
+            except ValueError as e:
+                # mismo comportamiento que tu script de consola
+                self._render_admin_users(error=f"Error al crear usuario: {e}")
+                return
+
+            # Usuario creado OK
+            self._render_admin_users(success=f"Usuario '{username}' creado correctamente.")
+            return
 
 
         # Cualquier otro POST no está soportado
@@ -209,6 +256,45 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self, *_):
         # Silenciar logs por consola
         pass
+
+        
+    #Admin
+    def _is_admin_request(self) -> bool:
+        client_ip, _ = self.client_address
+        return client_ip in ADMIN_IPS
+    
+    def _render_admin_users(
+        self,
+        error: str | None = None,
+        success: str | None = None,) -> None:
+        # construir bloque de errores / éxito
+        if error:
+            error_block = f'<div class="alert-error">{error}</div>'
+        else:
+            error_block = ""
+
+        if success:
+            success_block = f'<div class="alert-success">{success}</div>'
+        else:
+            success_block = ""
+
+        # Construir lista de usuarios
+        users_html_items = []
+        for u in list_users().keys():
+            users_html_items.append(f"<li>{u}</li>")
+        users_list = "\n".join(users_html_items) or "<li><em>No hay usuarios aún</em></li>"
+
+        tpl_path = TEMPLATES / "admin_users.html"
+        html = tpl_path.read_text(encoding="utf-8").format(
+            error_block=error_block,
+            success_block=success_block,
+            users_list=users_list,
+        )
+
+        self.send_response(200)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.end_headers()
+        self.wfile.write(html.encode("utf-8"))
 
 
 if __name__ == "__main__":

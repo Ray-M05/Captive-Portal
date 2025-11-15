@@ -406,10 +406,47 @@ body.portal-body {
 }
 
 .logout-button {
-  /* Si ya tienes .portal-button, esto puede ser solo ajustes específicos */
   padding: 0.75rem 1.5rem;
   border-radius: 999px;
   border: none;
   cursor: pointer;
   font-weight: 600;
+}
+
+.admin-messages {
+  min-height: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.alert-error {
+  background: #7f1d1d;
+  color: #fecaca;
+  border-radius: 0.5rem;
+  padding: 0.6rem 0.9rem;
+  font-size: 0.9rem;
+}
+
+.alert-success {
+  background: #022c22;
+  color: #bbf7d0;
+  border-radius: 0.5rem;
+  padding: 0.6rem 0.9rem;
+  font-size: 0.9rem;
+}
+
+.users-section {
+  margin-top: 1.5rem;
+}
+
+.users-list {
+  list-style: none;
+  padding-left: 0;
+  margin-top: 0.5rem;
+}
+
+.users-list li {
+  font-size: 0.9rem;
+  color: #e5e7eb;
+  padding: 0.2rem 0;
+  border-bottom: 1px solid #1f2937;
 }
