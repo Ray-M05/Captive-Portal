@@ -8,6 +8,6 @@
 
 ## Ejecutar demo
 ```bash
-python3 portal/server.py
+sudo python3 portal/server.py
 # Abre: http://localhost:8080
 ```

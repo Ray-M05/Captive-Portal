@@ -1,6 +1,3 @@
-#!/usr/bin/env bash
-# scripts/teardown_firewall.sh
-# Limpia reglas de iptables usadas por el portal
 
 set -e
 
