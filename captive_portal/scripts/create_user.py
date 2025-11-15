@@ -1,5 +1,12 @@
 from getpass import getpass
-from core.auth import create_user, list_users
+from pathlib import Path
+import sys
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from core.auth import create_user, list_users 
 
 
 def main() -> None:
