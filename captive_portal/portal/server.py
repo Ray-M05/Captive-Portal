@@ -151,34 +151,6 @@ class Handler(BaseHTTPRequestHandler):
                 client_ip = self.client_address[0]
                 client_mac = lookup_mac(client_ip) or ""
 
-                # 1) Mirar si ya existe una sesión activa de este usuario
-                active = sess_store.list_all()
-                for sid_existente, info in active.items():
-                    if info.get("user") == user:
-                        # Hay sesión previa de este usuario
-                        ip_activa = info.get("ip")
-
-                        # Caso 1: misma IP -> ya está logueado aquí, podemos simplemente redirigir a /ok
-                        if ip_activa == client_ip:
-                            self.send_response(302)
-                            self.send_header("Location", portal_url("/ok"))
-                            self.end_headers()
-                            return
-
-                        # Caso 2: IP distinta -> NO dejamos loguear al nuevo
-                        self.send_response(200)
-                        self.send_header("Content-Type", "text/html; charset=utf-8")
-                        self.end_headers()
-                        self.wfile.write(
-                            render(
-                                "login.html",
-                                error="Este usuario ya tiene una sesión activa en otro dispositivo. "
-                                    "Cierra sesión allí antes de volver a entrar."
-                            )
-                        )
-                        return 
-
-                # 2) Si llegamos aquí, no hay sesiones activas para ese usuario -> creamos la sesión normal
                 sid = sess_store.create(user, client_ip, client_mac)
                 fw.allow_client(client_ip)
 
