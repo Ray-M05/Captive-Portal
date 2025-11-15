@@ -144,7 +144,7 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.write(render("terms.html"))
             return
         
-        if path == "/admin/users":
+        if path == "/admin_users":
             if not self._is_admin_request():
                 self.send_error(403, "Forbidden")
                 return
@@ -221,7 +221,7 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
             return
         
-        if self.path == "/admin/users":
+        if self.path == "/admin_users":
             if not self._is_admin_request():
                 self.send_error(403, "Forbidden")
                 return
