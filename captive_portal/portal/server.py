@@ -3,17 +3,13 @@ from pathlib import Path
 import urllib.parse as up
 import os, secrets, http.cookies
 
-# 🔥 NUEVO: importamos el manejador de firewall
 from core.firewall import FirewallManager
 
 ROOT = Path(__file__).resolve().parents[1]
 TEMPLATES = ROOT / "portal" / "templates"
 
-# Sesiones simples en memoria: sid -> {"user": str, "ip": str}
 SESSIONS: dict[str, dict[str, str]] = {}
 
-# 🔥 NUEVO: instancia global del firewall
-# Ajusta lan_iface / wan_iface según tu máquina (wlo1 / usb0 suelen ser correctos)
 fw = FirewallManager(lan_iface="wlo1", wan_iface="usb0")
 
 
@@ -107,7 +103,6 @@ class Handler(BaseHTTPRequestHandler):
                 sid = secrets.token_urlsafe(32)
                 SESSIONS[sid] = {"user": user, "ip": client_ip}
 
-                # 🔥 NUEVO: abrir acceso a Internet para esta IP
                 fw.allow_client(client_ip)
 
                 # Seteamos cookie de sesión
@@ -135,7 +130,6 @@ class Handler(BaseHTTPRequestHandler):
                 info = SESSIONS.pop(sid)
                 client_ip = info.get("ip")
 
-                # 🔥 NUEVO: cerramos el acceso a Internet de esta IP (opcionalmente)
                 if client_ip:
                     fw.block_client(client_ip)
 
@@ -160,9 +154,6 @@ class Handler(BaseHTTPRequestHandler):
 if __name__ == "__main__":
     port = int(os.getenv("PORT", "8080"))
 
-    # 🔥 IMPORTANTE: ponemos el sistema en modo "portal cautivo" una vez
-    # Necesitarás ejecutar este programa con permisos (ej. sudo), o dar permisos
-    # en sudoers a los comandos iptables/sysctl que usa FirewallManager.
     fw.setup_base_rules()
 
     with ThreadingHTTPServer(("0.0.0.0", port), Handler) as httpd:

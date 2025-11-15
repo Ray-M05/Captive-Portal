@@ -1,4 +1,3 @@
-# core/firewall.py
 
 import subprocess
 from typing import Optional
@@ -56,14 +55,28 @@ class FirewallManager:
             "-j", "MASQUERADE",
         ])
 
+        run_cmd([
+        "sudo", "iptables", "-t", "nat", "-A", "PREROUTING",
+        "-i", self.lan_iface,
+        "-p", "tcp", "--dport", "80",
+        "-j", "REDIRECT", "--to-port", "8080",
+    ])
+
     # --- Operaciones por cliente ---
 
     def allow_client(self, client_ip: str) -> None:
         """
-        Permite que la IP del cliente pueda enrutar tráfico hacia Internet.
-        Implementado como regla iptables en la cadena FORWARD.
+        Permite que la IP del cliente pueda enrutar tráfico hacia Internet
+        y que no se le siga redirigiendo el HTTP al portal.
         """
-        # Regla: si viene desde client_ip por la LAN, se acepta (se inserta al principio)
+        run_cmd([
+            "sudo", "iptables", "-t", "nat", "-I", "PREROUTING", "1",
+            "-s", client_ip,
+            "-i", self.lan_iface,
+            "-p", "tcp", "--dport", "80",
+            "-j", "ACCEPT",
+        ])
+
         run_cmd([
             "sudo", "iptables", "-I", "FORWARD", "1",
             "-s", client_ip,
@@ -71,21 +84,40 @@ class FirewallManager:
             "-j", "ACCEPT",
         ])
 
+
     def block_client(self, client_ip: str) -> None:
         """
-        Elimina reglas de FORWARD que permitan a esta IP (para un logout, por ejemplo).
+        Elimina reglas de FORWARD y NAT que permitan a esta IP.
         """
-        # Esto es un poco bruto: borra cualquier regla con -s client_ip en FORWARD.
-        # Para el proyecto es más que suficiente.
         while True:
             result = subprocess.run(
-                ["sudo", "iptables", "-D", "FORWARD", "-s", client_ip, "-j", "ACCEPT"],
+                [
+                    "sudo", "iptables", "-D", "FORWARD",
+                    "-s", client_ip,
+                    "-i", self.lan_iface,
+                    "-j", "ACCEPT",
+                ],
+                check=False,
                 capture_output=True,
-                text=True,
             )
             if result.returncode != 0:
-                # No quedan reglas por borrar
                 break
+
+        while True:
+            result = subprocess.run(
+                [
+                    "sudo", "iptables", "-t", "nat", "-D", "PREROUTING",
+                    "-s", client_ip,
+                    "-i", self.lan_iface,
+                    "-p", "tcp", "--dport", "80",
+                    "-j", "ACCEPT",
+                ],
+                check=False,
+                capture_output=True,
+            )
+            if result.returncode != 0:
+                break
+
 
     # --- Limpieza global ---
 
@@ -99,7 +131,6 @@ class FirewallManager:
         run_cmd(["sudo", "iptables", "-P", "OUTPUT", "ACCEPT"])
         run_cmd(["sudo", "iptables", "-P", "FORWARD", "ACCEPT"])
 
-        # Opcional: deshabilitar forwarding
         subprocess.run(
             ["sudo", "sysctl", "-w", "net.ipv4.ip_forward=0"],
             check=False,
