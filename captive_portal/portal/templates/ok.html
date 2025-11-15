@@ -27,9 +27,18 @@
         Has sido autenticado exitosamente. Ahora tienes acceso a internet.
       </p>
 
-      <!-- <p class="connected-user">
+      <!-- Si algún día quieres mostrar el usuario:
+      <p class="connected-user">
         Usuario: <span id="username">{{ username }}</span>
-      </p> -->
+      </p>
+      -->
+
+      <!-- Botón de logout -->
+      <form method="POST" action="/logout" class="logout-form">
+        <button type="submit" class="portal-button logout-button">
+          Cerrar sesión
+        </button>
+      </form>
 
     </div>
   </div>

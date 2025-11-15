@@ -10,5 +10,9 @@
   "jeancito": {
     "salt": "bb449aedba322e063a2b6ec9ea1c7cdc",
     "hash": "91e635be6bce1e88db40541226ac1d0279d18df7badcf765ac1cf481b84f292f"
+  },
+  "rachel-pr": {
+    "salt": "9935ffa9f8129f35e742d0c84dd5a1bf",
+    "hash": "0832e678a7d8c9dca0d8b0f91ab11eda26fd5845f2cfd28cc97330c6d4565a63"
   }
 }
