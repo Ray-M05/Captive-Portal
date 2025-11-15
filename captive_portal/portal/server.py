@@ -132,6 +132,13 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(render("ok.html"))
             return
+        
+        if self.path == "/terms":
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.end_headers()
+            self.wfile.write(render("terms.html"))
+            return
 
         # Cualquier otra ruta -> redirigimos a la raíz del portal
         self.send_response(302)
