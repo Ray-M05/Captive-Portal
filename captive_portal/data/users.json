@@ -6,5 +6,9 @@
   "jean": {
     "salt": "42a486ac8a61df0b5b0c6bcb3827085d",
     "hash": "2fece84ab9d94c619b56fc4bf72ea17e908133a988a149ff7d399ec683ccd6e1"
+  },
+  "jeancito": {
+    "salt": "bb449aedba322e063a2b6ec9ea1c7cdc",
+    "hash": "91e635be6bce1e88db40541226ac1d0279d18df7badcf765ac1cf481b84f292f"
   }
 }

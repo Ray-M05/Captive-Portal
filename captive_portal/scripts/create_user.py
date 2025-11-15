@@ -10,7 +10,7 @@ from core.auth import create_user, list_users
 
 
 def main() -> None:
-    print("=== Alta de usuario para el portal cautivo ===")
+    print("=== Nuevo registro de usuario ===")
     username = input("Nombre de usuario: ").strip()
     if not username:
         print("✗ El nombre de usuario no puede estar vacío.")
