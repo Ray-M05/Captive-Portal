@@ -5,7 +5,7 @@ import os, secrets, http.cookies
 
 from core.auth import verify_user
 from core.firewall import FirewallManager
-from core.net import lookup_mac         
+from core.arp import lookup_mac         
 from core import sessions as sess_store 
 
 
