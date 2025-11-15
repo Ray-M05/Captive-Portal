@@ -1,1 +1,10 @@
-[]
+{
+  "rachel": {
+    "salt": "b897a062bc18737fd971f1b0ecb64dfa",
+    "hash": "060c79b8d3d2f16f4347db9ad296e6844dec45f41da85b423d0088a611fff21f"
+  },
+  "jean": {
+    "salt": "42a486ac8a61df0b5b0c6bcb3827085d",
+    "hash": "2fece84ab9d94c619b56fc4bf72ea17e908133a988a149ff7d399ec683ccd6e1"
+  }
+}

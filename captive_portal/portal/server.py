@@ -34,7 +34,7 @@ def get_sid_from_cookie(handler: BaseHTTPRequestHandler) -> str | None:
 
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
-        # Archivos estáticos (CSS, JS, imágenes...)
+        # Archivos estáticos (CSS, JS, imágenes)
         if self.path.startswith("/static/"):
             path = ROOT / "portal" / self.path.strip("/")
             if path.exists():
@@ -95,7 +95,7 @@ class Handler(BaseHTTPRequestHandler):
             user = params.get("username", [""])[0].strip()
             pwd = params.get("password", [""])[0]
 
-            # Validamos usuario contra la BD persistente (core/auth.py)
+            # Validamos usuario contra la BD 
             if verify_user(user, pwd):
                 client_ip = self.client_address[0]
 
@@ -150,7 +150,7 @@ class Handler(BaseHTTPRequestHandler):
 
         self.send_error(404)
 
-    def log_message(self, *_):  # menos ruido en consola
+    def log_message(self, *_): 
         pass
 
 

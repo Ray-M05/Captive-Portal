@@ -89,7 +89,6 @@ def verify_user(username: str, password: str) -> bool:
         return False
 
     calc_hash = _pbkdf2(password, salt)
-    # Comparación en tiempo "casi" constante
     return secrets.compare_digest(calc_hash, stored_hash)
 
 
