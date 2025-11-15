@@ -151,22 +151,37 @@ class Handler(BaseHTTPRequestHandler):
                 client_ip = self.client_address[0]
                 client_mac = lookup_mac(client_ip) or ""
 
-                # 1) Buscar sesiones anteriores de este usuario y cerrar su acceso
+                # 1) Mirar si ya existe una sesión activa de este usuario
                 active = sess_store.list_all()
-                for old_sid, info in list(active.items()):
+                for sid_existente, info in active.items():
                     if info.get("user") == user:
-                        old_ip = info.get("ip")
-                        if old_ip:
-                            fw.block_client(old_ip)   # ← quitamos la regla iptables de esa IP
-                        sess_store.destroy(old_sid)    # ← destruimos sesión vieja
+                        # Hay sesión previa de este usuario
+                        ip_activa = info.get("ip")
 
-                # 2) Crear la nueva sesión persistente (user ↔ IP/MAC)
+                        # Caso 1: misma IP -> ya está logueado aquí, podemos simplemente redirigir a /ok
+                        if ip_activa == client_ip:
+                            self.send_response(302)
+                            self.send_header("Location", portal_url("/ok"))
+                            self.end_headers()
+                            return
+
+                        # Caso 2: IP distinta -> NO dejamos loguear al nuevo
+                        self.send_response(200)
+                        self.send_header("Content-Type", "text/html; charset=utf-8")
+                        self.end_headers()
+                        self.wfile.write(
+                            render(
+                                "login.html",
+                                error="Este usuario ya tiene una sesión activa en otro dispositivo. "
+                                    "Cierra sesión allí antes de volver a entrar."
+                            )
+                        )
+                        return 
+
+                # 2) Si llegamos aquí, no hay sesiones activas para ese usuario -> creamos la sesión normal
                 sid = sess_store.create(user, client_ip, client_mac)
-
-                # 3) Abrir el paso en el firewall para esta IP
                 fw.allow_client(client_ip)
 
-                # 4) Setear cookie de sesión
                 jar = http.cookies.SimpleCookie()
                 jar["sid"] = sid
                 jar["sid"]["httponly"] = True
@@ -184,7 +199,6 @@ class Handler(BaseHTTPRequestHandler):
                     render("login.html", error="Usuario o contraseña incorrectos")
                 )
             return
-
 
         # Logout
         if self.path == "/logout":
