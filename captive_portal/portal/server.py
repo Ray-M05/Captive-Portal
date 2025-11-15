@@ -5,12 +5,12 @@ import os, secrets, http.cookies
 
 from core.auth import verify_user
 from core.firewall import FirewallManager
+from core.net import lookup_mac         
+from core import sessions as sess_store 
+
 
 ROOT = Path(__file__).resolve().parents[1]
 TEMPLATES = ROOT / "portal" / "templates"
-
-# Sesiones en memoria: sid -> { "user": str, "ip": str }
-SESSIONS: dict[str, dict[str, str]] = {}
 
 # Config del portal
 PORT = int(os.getenv("PORT", "8080"))
@@ -48,6 +48,43 @@ def get_sid_from_cookie(handler: BaseHTTPRequestHandler) -> str | None:
         return jar["sid"].value
     return None
 
+def get_valid_session(handler: BaseHTTPRequestHandler):
+    """
+    Devuelve la sesión válida para esta petición o None.
+    Aplica:
+      - TTL (en sess_store.get)
+      - Binding IP/MAC (anti suplantación)
+    """
+    sid = get_sid_from_cookie(handler)
+    if not sid:
+        return None
+
+    session = sess_store.get(sid)
+    if not session:
+        return None
+
+    client_ip = handler.client_address[0]
+    client_mac = lookup_mac(client_ip) or ""
+
+    # Comprobamos IP
+    if session.get("ip") != client_ip:
+        # IP distinta -> alguien está usando una cookie desde otra IP
+        # o el cliente ha cambiado forzadamente su IP.
+        # Lo tratamos como suplantación: eliminar sesión y bloquear IP actual.
+        fw.block_client(client_ip)
+        sess_store.destroy(sid)
+        return None
+
+    # Comprobamos MAC (si tenemos almacenada)
+    stored_mac = (session.get("mac") or "").lower()
+    if stored_mac and client_mac and stored_mac != client_mac.lower():
+        # Misma IP pero MAC distinta -> suplantación ARP
+        fw.block_client(client_ip)
+        sess_store.destroy(sid)
+        return None
+
+    return session
+
 
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -64,9 +101,7 @@ class Handler(BaseHTTPRequestHandler):
             self.send_error(404)
             return
 
-        # Comprobamos sesión
-        sid = get_sid_from_cookie(self)
-        session = SESSIONS.get(sid) if sid else None
+        session = get_valid_session(self)
 
         # Página principal / login
         if self.path in ("/", "/login"):
@@ -112,30 +147,36 @@ class Handler(BaseHTTPRequestHandler):
             user = params.get("username", [""])[0].strip()
             pwd = params.get("password", [""])[0]
 
-            # Validamos usuario contra la BD
             if verify_user(user, pwd):
                 client_ip = self.client_address[0]
+                client_mac = lookup_mac(client_ip) or ""
 
-                # Creamos sesión
-                sid = secrets.token_urlsafe(32)
-                SESSIONS[sid] = {"user": user, "ip": client_ip}
+                # 1) Buscar sesiones anteriores de este usuario y cerrar su acceso
+                active = sess_store.list_all()
+                for old_sid, info in list(active.items()):
+                    if info.get("user") == user:
+                        old_ip = info.get("ip")
+                        if old_ip:
+                            fw.block_client(old_ip)   # ← quitamos la regla iptables de esa IP
+                        sess_store.destroy(old_sid)    # ← destruimos sesión vieja
 
-                # Autorizamos IP en el firewall (bypass portal / NAT)
+                # 2) Crear la nueva sesión persistente (user ↔ IP/MAC)
+                sid = sess_store.create(user, client_ip, client_mac)
+
+                # 3) Abrir el paso en el firewall para esta IP
                 fw.allow_client(client_ip)
 
-                # Seteamos cookie de sesión
+                # 4) Setear cookie de sesión
                 jar = http.cookies.SimpleCookie()
                 jar["sid"] = sid
                 jar["sid"]["httponly"] = True
                 jar["sid"]["path"] = "/"
 
                 self.send_response(302)
-                # ¡OJO!: redirigimos a URL absoluta del portal
                 self.send_header("Location", portal_url("/ok"))
                 self.send_header("Set-Cookie", jar.output(header="", sep="").strip())
                 self.end_headers()
             else:
-                # Usuario o contraseña inválidos
                 self.send_response(200)
                 self.send_header("Content-Type", "text/html; charset=utf-8")
                 self.end_headers()
@@ -144,15 +185,17 @@ class Handler(BaseHTTPRequestHandler):
                 )
             return
 
+
         # Logout
         if self.path == "/logout":
             sid = get_sid_from_cookie(self)
-            if sid and sid in SESSIONS:
-                info = SESSIONS.pop(sid)
-                client_ip = info.get("ip")
-
-                if client_ip:
-                    fw.block_client(client_ip)
+            if sid:
+                session = sess_store.get(sid)
+                if session:
+                    client_ip = session.get("ip")
+                    if client_ip:
+                        fw.block_client(client_ip)
+                sess_store.destroy(sid)
 
             # Expirar cookie
             jar = http.cookies.SimpleCookie()
@@ -161,11 +204,11 @@ class Handler(BaseHTTPRequestHandler):
             jar["sid"]["max-age"] = 0
 
             self.send_response(302)
-            # Redirigimos a la raíz del portal
             self.send_header("Location", portal_url("/"))
             self.send_header("Set-Cookie", jar.output(header="", sep="").strip())
             self.end_headers()
             return
+
 
         # Cualquier otro POST no está soportado
         self.send_error(404)
