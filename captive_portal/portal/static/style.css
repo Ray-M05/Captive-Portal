@@ -400,3 +400,16 @@ body.portal-body {
     align-items: flex-start;
   }
 }
+.logout-form {
+  margin-top: 1.5rem;
+  text-align: center;
+}
+
+.logout-button {
+  /* Si ya tienes .portal-button, esto puede ser solo ajustes específicos */
+  padding: 0.75rem 1.5rem;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+}
