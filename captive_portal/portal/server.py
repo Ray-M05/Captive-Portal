@@ -162,16 +162,13 @@ class Handler(BaseHTTPRequestHandler):
         path = parsed.path
 
         content_length = int(self.headers.get("Content-Length", "0"))
-        body = self.rfile.read(content_length).decode("utf-8")
+        body = self.rfile.read(content_length).decode("utf-8", "ignore")
         data = dict(up.parse_qsl(body))
 
         # Login
-        if self.path == "/login":
-            length = int(self.headers.get("Content-Length", "0"))
-            body = self.rfile.read(length).decode("utf-8", "ignore")
-            params = up.parse_qs(body)
-            user = params.get("username", [""])[0].strip()
-            pwd = params.get("password", [""])[0]
+        if path == "/login":
+            user = data.get("username", "").strip()
+            pwd = data.get("password", "")
 
             if verify_user(user, pwd):
                 client_ip = self.client_address[0]
@@ -199,7 +196,7 @@ class Handler(BaseHTTPRequestHandler):
             return
 
         # Logout
-        if self.path == "/logout":
+        if path == "/logout":
             sid = get_sid_from_cookie(self)
             if sid:
                 session = sess_store.get(sid)
@@ -221,7 +218,7 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
             return
         
-        if self.path == "/admin_users":
+        if path == "/admin_users":
             if not self._is_admin_request():
                 self.send_error(403, "Forbidden")
                 return
@@ -241,11 +238,9 @@ class Handler(BaseHTTPRequestHandler):
             try:
                 create_user(username, pwd1)
             except ValueError as e:
-                # mismo comportamiento que tu script de consola
                 self._render_admin_users(error=f"Error al crear usuario: {e}")
                 return
 
-            # Usuario creado OK
             self._render_admin_users(success=f"Usuario '{username}' creado correctamente.")
             return
 
