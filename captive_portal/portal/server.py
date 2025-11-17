@@ -1,13 +1,15 @@
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 from pathlib import Path
 import urllib.parse as up
-import os, secrets, http.cookies
+import os, http.cookies
 
-from core.auth import verify_user
+from core.auth import verify_user, create_user, list_users
 from core.firewall import FirewallManager
-from core.arp import lookup_mac         
-from core import sessions as sess_store 
+from core.arp import lookup_mac
+from core import sessions as sess_store
 
+
+ADMIN_IPS = {"127.0.0.1", "10.0.0.1"}  # cambia 10.0.0.1 por la IP de tu router
 
 ROOT = Path(__file__).resolve().parents[1]
 TEMPLATES = ROOT / "portal" / "templates"
@@ -25,7 +27,6 @@ def portal_url(path: str) -> str:
     Construye una URL absoluta hacia el portal, para que
     las redirecciones no dependan del Host original.
     """
-    # Aseguramos que path empiece por "/"
     if not path.startswith("/"):
         path = "/" + path
     return f"http://{PORTAL_HOST}:{PORT}{path}"
@@ -48,6 +49,7 @@ def get_sid_from_cookie(handler: BaseHTTPRequestHandler) -> str | None:
         return jar["sid"].value
     return None
 
+
 def get_valid_session(handler: BaseHTTPRequestHandler):
     """
     Devuelve la sesión válida para esta petición o None.
@@ -68,17 +70,13 @@ def get_valid_session(handler: BaseHTTPRequestHandler):
 
     # Comprobamos IP
     if session.get("ip") != client_ip:
-        # IP distinta -> alguien está usando una cookie desde otra IP
-        # o el cliente ha cambiado forzadamente su IP.
-        # Lo tratamos como suplantación: eliminar sesión y bloquear IP actual.
         fw.block_client(client_ip)
         sess_store.destroy(sid)
         return None
 
-    # Comprobamos MAC (si tenemos almacenada)
+    # Comprobamos MAC 
     stored_mac = (session.get("mac") or "").lower()
     if stored_mac and client_mac and stored_mac != client_mac.lower():
-        # Misma IP pero MAC distinta -> suplantación ARP
         fw.block_client(client_ip)
         sess_store.destroy(sid)
         return None
@@ -88,25 +86,29 @@ def get_valid_session(handler: BaseHTTPRequestHandler):
 
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
-        # Archivos estáticos (CSS, JS, imágenes)
-        if self.path.startswith("/static/"):
-            path = ROOT / "portal" / self.path.strip("/")
-            if path.exists():
+        # --- Path limpio ---
+        parsed = up.urlparse(self.path)
+        path = parsed.path
+
+        # --- Archivos estáticos (CSS, JS, imágenes) ---
+        if path.startswith("/static/"):
+            fs_path = ROOT / "portal" / path.strip("/")
+            if fs_path.exists():
                 self.send_response(200)
-                if path.suffix == ".css":
+                if fs_path.suffix == ".css":
                     self.send_header("Content-Type", "text/css; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(path.read_bytes())
+                self.wfile.write(fs_path.read_bytes())
                 return
             self.send_error(404)
             return
 
         session = get_valid_session(self)
 
-        # Página principal / login
-        if self.path in ("/", "/login"):
-            # Si ya está logueado, mandarlo directo a /ok
+        # --- Página principal / login ---
+        if path in ("/", "/login"):
             if session:
+                # Ya tiene sesión válida -> a /ok
                 self.send_response(302)
                 self.send_header("Location", portal_url("/ok"))
                 self.end_headers()
@@ -118,10 +120,9 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.write(render("login.html", error=""))
             return
 
-        # Página "ok" (solo si hay sesión válida)
-        if self.path == "/ok":
+        # --- Página OK (solo con sesión válida) ---
+        if path == "/ok":
             if not session:
-                # Sin sesión -> al login del portal
                 self.send_response(302)
                 self.send_header("Location", portal_url("/login"))
                 self.end_headers()
@@ -133,52 +134,44 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.write(render("ok.html"))
             return
 
-        # Cualquier otra ruta -> redirigimos a la raíz del portal
+        # --- Términos y condiciones ---
+        if path == "/terms":
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.end_headers()
+            self.wfile.write(render("terms.html"))
+            return
+
+        # --- Panel admin: gestión de usuarios ---
+        if path == "/admin_users":
+            if not self._is_admin_request():
+                self.send_error(403, "Forbidden")
+                return
+            self._render_admin_users()
+            return
+
+        # --- Cualquier otra ruta -> al login ---
         self.send_response(302)
         self.send_header("Location", portal_url("/"))
         self.end_headers()
 
     def do_POST(self):
-        # Login
-        if self.path == "/login":
-            length = int(self.headers.get("Content-Length", "0"))
-            body = self.rfile.read(length).decode("utf-8", "ignore")
-            params = up.parse_qs(body)
-            user = params.get("username", [""])[0].strip()
-            pwd = params.get("password", [""])[0]
+        parsed = up.urlparse(self.path)
+        path = parsed.path
+
+        content_length = int(self.headers.get("Content-Length", "0"))
+        body = self.rfile.read(content_length).decode("utf-8", "ignore")
+        data = dict(up.parse_qsl(body))
+
+        # --- Login ---
+        if path == "/login":
+            user = data.get("username", "").strip()
+            pwd = data.get("password", "")
 
             if verify_user(user, pwd):
                 client_ip = self.client_address[0]
                 client_mac = lookup_mac(client_ip) or ""
 
-                # 1) Mirar si ya existe una sesión activa de este usuario
-                active = sess_store.list_all()
-                for sid_existente, info in active.items():
-                    if info.get("user") == user:
-                        # Hay sesión previa de este usuario
-                        ip_activa = info.get("ip")
-
-                        # Caso 1: misma IP -> ya está logueado aquí, podemos simplemente redirigir a /ok
-                        if ip_activa == client_ip:
-                            self.send_response(302)
-                            self.send_header("Location", portal_url("/ok"))
-                            self.end_headers()
-                            return
-
-                        # Caso 2: IP distinta -> NO dejamos loguear al nuevo
-                        self.send_response(200)
-                        self.send_header("Content-Type", "text/html; charset=utf-8")
-                        self.end_headers()
-                        self.wfile.write(
-                            render(
-                                "login.html",
-                                error="Este usuario ya tiene una sesión activa en otro dispositivo. "
-                                    "Cierra sesión allí antes de volver a entrar."
-                            )
-                        )
-                        return 
-
-                # 2) Si llegamos aquí, no hay sesiones activas para ese usuario -> creamos la sesión normal
                 sid = sess_store.create(user, client_ip, client_mac)
                 fw.allow_client(client_ip)
 
@@ -200,8 +193,8 @@ class Handler(BaseHTTPRequestHandler):
                 )
             return
 
-        # Logout
-        if self.path == "/logout":
+        # --- Logout ---
+        if path == "/logout":
             sid = get_sid_from_cookie(self)
             if sid:
                 session = sess_store.get(sid)
@@ -223,17 +216,82 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
             return
 
+        # --- Crear usuario desde panel admin ---
+        if path == "/admin_users":
+            if not self._is_admin_request():
+                self.send_error(403, "Forbidden")
+                return
 
-        # Cualquier otro POST no está soportado
+            username = data.get("username", "").strip()
+            pwd1 = data.get("password", "")
+            pwd2 = data.get("password2", "")
+
+            if not username:
+                self._render_admin_users(error="El nombre de usuario no puede estar vacío.")
+                return
+
+            if pwd1 != pwd2:
+                self._render_admin_users(error="Las contraseñas no coinciden.")
+                return
+
+            try:
+                create_user(username, pwd1)
+            except ValueError as e:
+                self._render_admin_users(error=f"Error al crear usuario: {e}")
+                return
+
+            self._render_admin_users(success=f"Usuario '{username}' creado correctamente.")
+            return
+
+        # --- Cualquier otro POST no está soportado ---
         self.send_error(404)
 
     def log_message(self, *_):
         # Silenciar logs por consola
         pass
 
+    # -------- Panel admin --------
+    def _is_admin_request(self) -> bool:
+        client_ip, _ = self.client_address
+        return client_ip in ADMIN_IPS
+
+    def _render_admin_users(
+        self,
+        error: str | None = None,
+        success: str | None = None,
+    ) -> None:
+        # Bloques de mensajes
+        if error:
+            error_block = f'<div class="alert-error">{error}</div>'
+        else:
+            error_block = ""
+
+        if success:
+            success_block = f'<div class="alert-success">{success}</div>'
+        else:
+            success_block = ""
+
+        # Lista de usuarios
+        users_html_items = []
+        for u in list_users().keys():
+            users_html_items.append(f"<li>{u}</li>")
+        users_list = "\n".join(users_html_items) or "<li><em>No hay usuarios aún</em></li>"
+
+        tpl_path = TEMPLATES / "admin_users.html"
+        html = tpl_path.read_text(encoding="utf-8").format(
+            error_block=error_block,
+            success_block=success_block,
+            users_list=users_list,
+        )
+
+        self.send_response(200)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.end_headers()
+        self.wfile.write(html.encode("utf-8"))
+
 
 if __name__ == "__main__":
-    # Reglas base del firewall (incluyendo la redirección HTTP→portal)
+    # Reglas base del firewall 
     fw.setup_base_rules()
 
     with ThreadingHTTPServer(("0.0.0.0", PORT), Handler) as httpd:
