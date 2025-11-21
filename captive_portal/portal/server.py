@@ -1,12 +1,12 @@
-from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 from pathlib import Path
 import urllib.parse as up
-import os, http.cookies
+import os
 
 from core.auth import verify_user, create_user, list_users
 from core.firewall import FirewallManager
 from core.arp import lookup_mac
 from core import sessions as sess_store
+from core.http_protocol import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 
 ADMIN_IPS = {"127.0.0.1", "10.0.0.1"}  # cambia 10.0.0.1 por la IP de tu router
@@ -39,15 +39,28 @@ def render(name: str, **ctx) -> bytes:
     return html.encode("utf-8")
 
 
+def _parse_cookie_header(cookie_header: str) -> dict[str, str]:
+    """
+    Parsea un header Cookie muy simple: "a=1; b=2".
+    Nos basta para recuperar la cookie 'sid'.
+    """
+    cookies: dict[str, str] = {}
+    for part in cookie_header.split(";"):
+        part = part.strip()
+        if not part or "=" not in part:
+            continue
+        name, value = part.split("=", 1)
+        cookies[name.strip()] = value.strip()
+    return cookies
+
+
 def get_sid_from_cookie(handler: BaseHTTPRequestHandler) -> str | None:
     cookie_header = handler.headers.get("Cookie")
     if not cookie_header:
         return None
-    jar = http.cookies.SimpleCookie()
-    jar.load(cookie_header)
-    if "sid" in jar:
-        return jar["sid"].value
-    return None
+
+    cookies = _parse_cookie_header(cookie_header)
+    return cookies.get("sid")
 
 
 def get_valid_session(handler: BaseHTTPRequestHandler):
@@ -74,7 +87,7 @@ def get_valid_session(handler: BaseHTTPRequestHandler):
         sess_store.destroy(sid)
         return None
 
-    # Comprobamos MAC 
+    # Comprobamos MAC
     stored_mac = (session.get("mac") or "").lower()
     if stored_mac and client_mac and stored_mac != client_mac.lower():
         fw.block_client(client_ip)
@@ -175,14 +188,12 @@ class Handler(BaseHTTPRequestHandler):
                 sid = sess_store.create(user, client_ip, client_mac)
                 fw.allow_client(client_ip)
 
-                jar = http.cookies.SimpleCookie()
-                jar["sid"] = sid
-                jar["sid"]["httponly"] = True
-                jar["sid"]["path"] = "/"
+                # Construimos el Set-Cookie a mano
+                cookie_value = f"sid={sid}; Path=/; HttpOnly"
 
                 self.send_response(302)
                 self.send_header("Location", portal_url("/ok"))
-                self.send_header("Set-Cookie", jar.output(header="", sep="").strip())
+                self.send_header("Set-Cookie", cookie_value)
                 self.end_headers()
             else:
                 self.send_response(200)
@@ -204,15 +215,12 @@ class Handler(BaseHTTPRequestHandler):
                         fw.block_client(client_ip)
                 sess_store.destroy(sid)
 
-            # Expirar cookie
-            jar = http.cookies.SimpleCookie()
-            jar["sid"] = ""
-            jar["sid"]["path"] = "/"
-            jar["sid"]["max-age"] = 0
+            # Expirar cookie 'sid'
+            cookie_value = "sid=; Path=/; Max-Age=0; HttpOnly"
 
             self.send_response(302)
             self.send_header("Location", portal_url("/"))
-            self.send_header("Set-Cookie", jar.output(header="", sep="").strip())
+            self.send_header("Set-Cookie", cookie_value)
             self.end_headers()
             return
 
@@ -227,7 +235,9 @@ class Handler(BaseHTTPRequestHandler):
             pwd2 = data.get("password2", "")
 
             if not username:
-                self._render_admin_users(error="El nombre de usuario no puede estar vacío.")
+                self._render_admin_users(
+                    error="El nombre de usuario no puede estar vacío."
+                )
                 return
 
             if pwd1 != pwd2:
@@ -240,7 +250,9 @@ class Handler(BaseHTTPRequestHandler):
                 self._render_admin_users(error=f"Error al crear usuario: {e}")
                 return
 
-            self._render_admin_users(success=f"Usuario '{username}' creado correctamente.")
+            self._render_admin_users(
+                success=f"Usuario '{username}' creado correctamente."
+            )
             return
 
         # --- Cualquier otro POST no está soportado ---
@@ -275,7 +287,9 @@ class Handler(BaseHTTPRequestHandler):
         users_html_items = []
         for u in list_users().keys():
             users_html_items.append(f"<li>{u}</li>")
-        users_list = "\n".join(users_html_items) or "<li><em>No hay usuarios aún</em></li>"
+        users_list = (
+            "\n".join(users_html_items) or "<li><em>No hay usuarios aún</em></li>"
+        )
 
         tpl_path = TEMPLATES / "admin_users.html"
         html = tpl_path.read_text(encoding="utf-8").format(
@@ -291,7 +305,7 @@ class Handler(BaseHTTPRequestHandler):
 
 
 if __name__ == "__main__":
-    # Reglas base del firewall 
+    # Reglas base del firewall
     fw.setup_base_rules()
 
     with ThreadingHTTPServer(("0.0.0.0", PORT), Handler) as httpd:
