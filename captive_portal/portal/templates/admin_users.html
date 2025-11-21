@@ -5,74 +5,195 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Panel del Router · Usuarios</title>
   <link rel="stylesheet" href="/static/style.css">
+
+  <style>
+
+    .router-admin-card {
+      max-width: 960px;
+      margin: 0 auto;
+    }
+
+    .router-admin-header {
+      margin-bottom: 1.5rem;
+    }
+
+    .router-admin-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+      gap: 2.5rem;
+      align-items: flex-start;
+    }
+
+    .router-admin-main,
+    .router-admin-sidebar {
+      min-width: 0; 
+    }
+
+    .router-admin-main .admin-messages {
+      margin-bottom: 1rem;
+    }
+
+    .router-admin-users-card {
+      padding: 1.5rem;
+      border-radius: 1rem;
+      background: rgba(15, 23, 42, 0.75); /* azul oscuro semitransparente */
+      border: 1px solid rgba(148, 163, 184, 0.35); /* gris azulado */
+      box-shadow: 0 18px 45px rgba(15, 23, 42, 0.7);
+    }
+
+    .router-admin-users-header h2 {
+      margin: 0;
+    }
+
+    .router-admin-users-header p {
+      margin: 0.35rem 0 1.25rem;
+      font-size: 0.9rem;
+      opacity: 0.85;
+    }
+
+    .router-admin-users-list-wrapper {
+      max-height: 260px;
+      overflow-y: auto;
+      border-radius: 0.75rem;
+      border: 1px solid rgba(51, 65, 85, 0.8);
+      background: radial-gradient(circle at top left, rgba(59,130,246,0.12), transparent),
+                  radial-gradient(circle at bottom right, rgba(56,189,248,0.10), transparent);
+    }
+
+    .router-admin-users-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    .router-admin-users-list li {
+      padding: 0.65rem 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.95rem;
+      border-bottom: 1px solid rgba(30, 64, 175, 0.35);
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      overflow: hidden;
+    }
+
+    .router-admin-users-list li:last-child {
+      border-bottom: none;
+    }
+
+    .router-admin-user-dot {
+      width: 0.55rem;
+      height: 0.55rem;
+      border-radius: 999px;
+      background: linear-gradient(135deg, #22c55e, #4ade80);
+      box-shadow: 0 0 6px rgba(34, 197, 94, 0.9);
+      flex-shrink: 0;
+    }
+
+    .router-admin-username {
+      flex: 1;
+    }
+
+    .router-admin-empty {
+      padding: 0.9rem 1rem;
+      font-size: 0.9rem;
+      opacity: 0.8;
+    }
+
+    @media (max-width: 768px) {
+      .router-admin-layout {
+        grid-template-columns: 1fr;
+        gap: 1.75rem;
+      }
+
+      .router-admin-users-card {
+        padding: 1.25rem;
+      }
+    }
+  </style>
 </head>
 <body class="portal-body">
   <div class="portal-wrapper">
-    <div class="portal-card">
+    <div class="portal-card router-admin-card">
 
-      <header class="portal-header">
+      <header class="portal-header router-admin-header">
         <h1>Panel del Router</h1>
         <p>Crear y gestionar usuarios del portal cautivo.</p>
       </header>
 
-      <div class="admin-messages">
-        {error_block}
-        {success_block}
+      <div class="router-admin-layout">
+        <div class="router-admin-main">
+          <div class="admin-messages">
+            {error_block}
+            {success_block}
+          </div>
+
+          <form method="post" action="/admin_users" class="portal-form">
+            <div class="form-group">
+              <label for="username">Nombre de usuario</label>
+              <input
+                id="username"
+                name="username"
+                type="text"
+                autocomplete="off"
+                placeholder="Ej: invitado1"
+                required
+              >
+            </div>
+
+            <div class="form-group">
+              <label for="password">Contraseña</label>
+              <input
+                id="password"
+                name="password"
+                type="password"
+                placeholder="Introduce la contraseña"
+                required
+              >
+            </div>
+
+            <div class="form-group">
+              <label for="password2">Repite la contraseña</label>
+              <input
+                id="password2"
+                name="password2"
+                type="password"
+                placeholder="Vuelve a escribir la contraseña"
+                required
+              >
+            </div>
+
+            <div class="form-actions">
+              <button type="submit" class="btn-primary">
+                Crear usuario
+              </button>
+              <a href="/login" class="btn-secondary">
+                Ir al portal de login
+              </a>
+            </div>
+          </form>
+        </div>
+
+        <aside class="router-admin-sidebar">
+          <section class="router-admin-users-card">
+            <div class="router-admin-users-header">
+              <h2>Usuarios registrados</h2>
+              <p>Estos son los usuarios que pueden autenticarse en el portal.</p>
+            </div>
+
+            <div class="router-admin-users-list-wrapper">
+              <ul class="router-admin-users-list">
+                <li>{users_list}</li>
+                <!--
+                  <li><span class="router-admin-user-dot"></span><span class="router-admin-username">rachel</span></li>
+                  <li><span class="router-admin-user-dot"></span><span class="router-admin-username">jean</span></li>
+                -->
+              </ul>
+            </div>
+          </section>
+        </aside>
       </div>
-
-      <!-- Formulario para crear usuario -->
-      <form method="post" action="/admin_users" class="portal-form">
-        <div class="form-group">
-          <label for="username">Nombre de usuario</label>
-          <input
-            id="username"
-            name="username"
-            type="text"
-            autocomplete="off"
-            placeholder="Ej: invitado1"
-            required
-          >
-        </div>
-
-        <div class="form-group">
-          <label for="password">Contraseña</label>
-          <input
-            id="password"
-            name="password"
-            type="password"
-            placeholder="Introduce la contraseña"
-            required
-          >
-        </div>
-
-        <div class="form-group">
-          <label for="password2">Repite la contraseña</label>
-          <input
-            id="password2"
-            name="password2"
-            type="password"
-            placeholder="Vuelve a escribir la contraseña"
-            required
-          >
-        </div>
-
-        <div class="form-actions">
-          <button type="submit" class="btn-primary">
-            Crear usuario
-          </button>
-          <a href="/login" class="btn-secondary">
-            Ir al portal de login
-          </a>
-        </div>
-      </form>
-
-      <section class="users-section">
-        <h2>Usuarios registrados</h2>
-        <p class="text-muted">Estos son los usuarios que pueden autenticarse en el portal.</p>
-        <ul class="users-list">
-          <li>{users_list}</li>
-        </ul>
-      </section>
 
     </div>
   </div>
