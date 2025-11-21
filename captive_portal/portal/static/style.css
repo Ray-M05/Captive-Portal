@@ -450,3 +450,108 @@ body.portal-body {
   padding: 0.2rem 0;
   border-bottom: 1px solid #1f2937;
 }
+
+
+
+/* Portal wrapper */
+
+.portal-wrapper {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  position: relative;
+  overflow: hidden;      
+}
+
+.portal-bg-orbits {
+  position: absolute;
+  inset: -25%;          
+  z-index: 0;
+  pointer-events: none;   
+  filter: blur(0px);
+}
+
+.orbit {
+  position: absolute;
+  border-radius: 999px;
+  opacity: 0.35;
+  mix-blend-mode: screen;
+  filter: blur(8px);
+}
+
+.orbit-1 {
+  width: 380px;
+  height: 380px;
+  background: radial-gradient(circle at 30% 30%, #2563eb, transparent 60%);
+  top: -10%;
+  left: -10%;
+  animation: float-orbit-1 26s ease-in-out infinite alternate;
+}
+
+.orbit-2 {
+  width: 420px;
+  height: 420px;
+  background: radial-gradient(circle at 20% 20%, #22c55e, transparent 65%);
+  bottom: -15%;
+  right: -5%;
+  animation: float-orbit-2 32s ease-in-out infinite alternate;
+}
+
+.orbit-3 {
+  width: 320px;
+  height: 320px;
+  background: radial-gradient(circle at 70% 30%, #eab308, transparent 60%);
+  top: 40%;
+  left: -5%;
+  animation: float-orbit-3 30s ease-in-out infinite alternate;
+}
+
+.orbit-4 {
+  width: 260px;
+  height: 260px;
+  background: radial-gradient(circle at 50% 20%, #ec4899, transparent 65%);
+  top: -20%;
+  right: 15%;
+  animation: float-orbit-4 38s ease-in-out infinite alternate;
+}
+
+/* Animaciones suaves de vaivén */
+@keyframes float-orbit-1 {
+  0%   { transform: translate3d(0, 0, 0) scale(1); }
+  100% { transform: translate3d(40px, 60px, 0) scale(1.12); }
+}
+
+@keyframes float-orbit-2 {
+  0%   { transform: translate3d(0, 0, 0) scale(1.05); }
+  100% { transform: translate3d(-60px, -30px, 0) scale(1.18); }
+}
+
+@keyframes float-orbit-3 {
+  0%   { transform: translate3d(0, 0, 0) scale(0.95); }
+  100% { transform: translate3d(30px, -40px, 0) scale(1.07); }
+}
+
+@keyframes float-orbit-4 {
+  0%   { transform: translate3d(0, 0, 0) scale(1); }
+  100% { transform: translate3d(-35px, 35px, 0) scale(1.15); }
+}
+
+
+.portal-wrapper:hover .orbit {
+  opacity: 0.5;
+  filter: blur(6px);
+}
+
+.portal-card {
+  background: var(--card-bg);
+  border-radius: 28px;
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.55);
+  padding: 3.5rem 3.25rem;
+  max-width: 420px;
+  width: 100%;
+  position: relative;
+  z-index: 1; 
+}
