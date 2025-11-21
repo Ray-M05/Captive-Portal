@@ -1,6 +1,6 @@
 :root {
-  --bg-start: #020617;   /* fondo oscuro */
-  --bg-end:   #020617;   /* puedes variar un poco si quieres más gradiente */
+  --bg-start: #040b29;   
+  --bg-end:   #020617;  
   --card-bg:  #020a1b;
   --card-border: #1f2937;
   --text-main: #e5e7eb;
@@ -31,7 +31,7 @@ body.portal-body {
   color: var(--text-main);
 }
 
-/* .portal-wrapper {
+.portal-wrapper {
   min-height: 100vh;
   display: flex;
   align-items: center;
@@ -39,7 +39,7 @@ body.portal-body {
   padding: 1.5rem;
 } */
 
-/* .portal-card {
+ .portal-card {
   background: var(--card-bg);
   border-radius: 28px;
   border: 1px solid rgba(148, 163, 184, 0.15);
@@ -47,7 +47,7 @@ body.portal-body {
   padding: 3.5rem 3.25rem;
   max-width: 420px;
   width: 100%;
-} */
+}
 
 /* Cabecera */
 .portal-header {
@@ -448,81 +448,6 @@ body.portal-body {
   padding: 0.2rem 0;
   border-bottom: 1px solid #1f2937;
 }
-
-
-
-/* Portal wrapper */
-
-.portal-bg-orbits {
-  position: absolute;
-  inset: -25%;          
-  z-index: 0;
-  pointer-events: none;   
-  filter: blur(0px);
-}
-
-.orbit {
-  opacity: 0.55;
-  mix-blend-mode: screen;
-  filter: blur(10px);
-}
-
-/* Restaurar los backgrounds con radial-gradient si quieres */
-.orbit-1 {
-  background: radial-gradient(circle at 30% 30%, #2563eb, transparent 60%);
-}
-
-.orbit-2 {
-  background: radial-gradient(circle at 20% 20%, #22c55e, transparent 65%);
-}
-
-.orbit-3 {
-  background: radial-gradient(circle at 70% 30%, #eab308, transparent 60%);
-}
-
-.orbit-4 {
-  background: radial-gradient(circle at 50% 20%, #ec4899, transparent 65%);
-}
-
-/* Animaciones suaves de vaivén */
-@keyframes float-orbit-1 {
-  0%   { transform: translate3d(0, 0, 0) scale(1); }
-  100% { transform: translate3d(40px, 60px, 0) scale(1.12); }
-}
-
-@keyframes float-orbit-2 {
-  0%   { transform: translate3d(0, 0, 0) scale(1.05); }
-  100% { transform: translate3d(-60px, -30px, 0) scale(1.18); }
-}
-
-@keyframes float-orbit-3 {
-  0%   { transform: translate3d(0, 0, 0) scale(0.95); }
-  100% { transform: translate3d(30px, -40px, 0) scale(1.07); }
-}
-
-@keyframes float-orbit-4 {
-  0%   { transform: translate3d(0, 0, 0) scale(1); }
-  100% { transform: translate3d(-35px, 35px, 0) scale(1.15); }
-}
-
-
-.portal-wrapper {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1.5rem;
-  position: relative;
-  overflow: hidden;
-}
-
-.portal-card {
-  position: relative;
-  z-index: 1;
-}
-
-
-
 
 /* admin users styles */
 .router-admin-card {
